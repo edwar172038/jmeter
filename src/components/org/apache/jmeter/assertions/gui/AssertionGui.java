@@ -110,11 +110,6 @@ public class AssertionGui extends AbstractAssertionGui {
      * patterns.
      */
     private JCheckBox notBox;
-    
-    /**
-	 * Add new button.
-     */
-    private JCheckBox orBox;
 
     /** A table of patterns to test against. */
     private JTable stringTable;
@@ -192,12 +187,6 @@ public class AssertionGui extends AbstractAssertionGui {
             } else {
                 ra.unsetNotType();
             }
-            
-            if (orBox.isSelected()) {
-                ra.setToOrType();
-            } else {
-                ra.unsetOrType();
-            }
         }
     }
 
@@ -219,7 +208,6 @@ public class AssertionGui extends AbstractAssertionGui {
 
         substringBox.setSelected(true);
         notBox.setSelected(false);
-        orBox.setSelected(false);
     }
 
     /**
@@ -249,7 +237,6 @@ public class AssertionGui extends AbstractAssertionGui {
         }
 
         notBox.setSelected(model.isNotType());
-        orBox.setSelected(model.isOrType());
 
         if (model.isTestFieldResponseData()) {
             responseStringButton.setSelected(true);
@@ -369,9 +356,6 @@ public class AssertionGui extends AbstractAssertionGui {
 
         notBox = new JCheckBox(JMeterUtils.getResString("assertion_not")); //$NON-NLS-1$
         panel.add(notBox);
-        
-        orBox = new JCheckBox(JMeterUtils.getResString("assertion_or")); //$NON-NLS-1$
-        panel.add(orBox);
 
         return panel;
     }
