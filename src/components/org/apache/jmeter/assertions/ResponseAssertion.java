@@ -84,6 +84,8 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
     private static final int EQUALS = 1 << 3;
 
     private static final int SUBSTRING = 1 << 4;
+    
+    private static final int OR = 1 << 5;
 
     // Mask should contain all types (but not NOT)
     private static final int TYPE_MASK = CONTAINS | EQUALS | MATCH | SUBSTRING;
@@ -221,6 +223,10 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
     public boolean isNotType() {
         return (getTestType() & NOT) != 0;
     }
+    
+    public boolean isOrType() {
+        return (getTestType() & OR) != 0;
+    }
 
     public void setToContainsType() {
         setTestTypeMasked(CONTAINS);
@@ -244,6 +250,14 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
 
     public void unsetNotType() {
         setTestType(getTestType() & ~NOT);
+    }
+    
+    public void setToOrType() {
+        setTestType((getTestType() | OR));
+    }
+
+    public void unsetOrType() {
+        setTestType(getTestType() & ~OR);
     }
 
     public boolean getAssumeSuccess() {
@@ -291,9 +305,9 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
         }
 
         result.setFailure(false);
-        result.setError(false);
-
+        result.setError(false); 
         boolean notTest = (NOT & getTestType()) > 0;
+        boolean orTest = (OR & getTestType()) > 0;
         boolean contains = isContainsType(); // do it once outside loop
         boolean equals = isEqualsType();
         boolean substring = isSubstringType();
@@ -301,6 +315,7 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
         boolean debugEnabled = log.isDebugEnabled();
         if (debugEnabled){
             log.debug("Type:" + (contains?"Contains" : "Match") + (notTest? "(not)" : ""));
+            log.debug("Type:" + (contains?"Contains" : "Match") + (orTest? "(or)" : ""));
         }
 
         if (StringUtils.isEmpty(toCheck)) {
@@ -314,6 +329,8 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
         }
 
         boolean pass = true;
+        boolean hasTrue = false;
+        ArrayList<String> allCheckMessage = new ArrayList<String>();
         try {
             // Get the Matcher for this thread
             Perl5Matcher localMatcher = JMeterUtils.getMatcher();
@@ -334,13 +351,33 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
                     found = localMatcher.matches(toCheck, pattern);
                 }
                 pass = notTest ? !found : found;
-                if (!pass) {
-                    if (debugEnabled){log.debug("Failed: "+stringPattern);}
-                    result.setFailure(true);
-                    result.setFailureMessage(getFailText(stringPattern,toCheck));
-                    break;
+                // If orTest is True,When the cycle is over, then judge the results.
+                if (orTest){
+                	if (!pass) {
+                        if (debugEnabled){log.debug("Failed: "+stringPattern);}
+                        allCheckMessage.add(getFailText(stringPattern,toCheck));
+                    }else{
+                    	hasTrue=true;
+                    }
+                    if (debugEnabled){log.debug("Passed: "+stringPattern);}
+                }else{
+                	if (!pass) {
+                        if (debugEnabled){log.debug("Failed: "+stringPattern);}
+                        result.setFailure(true);
+                        result.setFailureMessage(getFailText(stringPattern,toCheck));
+                        break;
+                    }
+                    if (debugEnabled){log.debug("Passed: "+stringPattern);}
+                }   
+            }
+            //Judgment result
+            if (orTest&&!hasTrue){
+            	String errorMsg="";
+            	for(String tmp:allCheckMessage){
+            		errorMsg+=tmp+'\t';
                 }
-                if (debugEnabled){log.debug("Passed: "+stringPattern);}
+            	result.setFailure(true);
+                result.setFailureMessage(errorMsg);
             }
         } catch (MalformedCachePatternException e) {
             result.setError(true);
@@ -413,7 +450,6 @@ public class ResponseAssertion extends AbstractScopedAssertion implements Serial
         }
 
         sb.append("/");
-
         return sb.toString();
     }
 
